@@ -1,180 +1,268 @@
-// GBEm.cpp : Define el punto de entrada de la aplicación.
-//
-
-#include "framework.h"
 #include "GBEm.h"
 
-#define MAX_LOADSTRING 100
 
-// Variables globales:
-HINSTANCE hInst;                                // instancia actual
-WCHAR szTitle[MAX_LOADSTRING];                  // Texto de la barra de título
-WCHAR szWindowClass[MAX_LOADSTRING];            // nombre de clase de la ventana principal
-
-// Declaraciones de funciones adelantadas incluidas en este módulo de código:
-ATOM                MyRegisterClass(HINSTANCE hInstance);
-BOOL                InitInstance(HINSTANCE, int);
-LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
-
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-                     _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPWSTR    lpCmdLine,
-                     _In_ int       nCmdShow)
+HWND GBEm::getSDLWinHandle(SDL_Window* win)
 {
-    UNREFERENCED_PARAMETER(hPrevInstance);
-    UNREFERENCED_PARAMETER(lpCmdLine);
-
-    // TODO: Colocar código aquí.
-
-    // Inicializar cadenas globales
-    LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-    LoadStringW(hInstance, IDC_GBEM, szWindowClass, MAX_LOADSTRING);
-    MyRegisterClass(hInstance);
-
-    // Realizar la inicialización de la aplicación:
-    if (!InitInstance (hInstance, nCmdShow))
-    {
-        return FALSE;
-    }
-
-    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_GBEM));
-
-    MSG msg;
-
-    // Bucle principal de mensajes:
-    while (GetMessage(&msg, nullptr, 0, 0))
-    {
-        if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-    }
-
-    return (int) msg.wParam;
+	SDL_SysWMinfo infoWindow;
+	SDL_VERSION(&infoWindow.version);
+	if (!SDL_GetWindowWMInfo(win, &infoWindow))
+	{
+		printf("No Window Handler!");
+		return NULL;
+	}
+	return (infoWindow.info.win.window);
 }
 
-
-
-//
-//  FUNCIÓN: MyRegisterClass()
-//
-//  PROPÓSITO: Registra la clase de ventana.
-//
-ATOM MyRegisterClass(HINSTANCE hInstance)
+void GBEm::CreateMenuBar(HWND hwnd)
 {
-    WNDCLASSEXW wcex;
 
-    wcex.cbSize = sizeof(WNDCLASSEX);
+	HMENU hMenubar;
+	HMENU hMenuFile;
 
-    wcex.style          = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc    = WndProc;
-    wcex.cbClsExtra     = 0;
-    wcex.cbWndExtra     = 0;
-    wcex.hInstance      = hInstance;
-    wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_GBEM));
-    wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_GBEM);
-    wcex.lpszClassName  = szWindowClass;
-    wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
-    return RegisterClassExW(&wcex);
+	hMenubar = CreateMenu();
+	hMenuFile = CreateMenu();
+
+
+	AppendMenuW(hMenuFile, MF_STRING, IDM_FILE_OPEN, L"&Open");
+	AppendMenuW(hMenuFile, MF_SEPARATOR, 0, NULL);
+	AppendMenuW(hMenuFile, MF_STRING, IDM_FILE_QUIT, L"&Quit");
+
+	AppendMenuW(hMenubar, MF_POPUP, (UINT_PTR)hMenuFile, L"&File");
+
+	SetMenu(hwnd, hMenubar);
+
 }
 
-//
-//   FUNCIÓN: InitInstance(HINSTANCE, int)
-//
-//   PROPÓSITO: Guarda el identificador de instancia y crea la ventana principal
-//
-//   COMENTARIOS:
-//
-//        En esta función, se guarda el identificador de instancia en una variable común y
-//        se crea y muestra la ventana principal del programa.
-//
-BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
-{
-   hInst = hInstance; // Almacenar identificador de instancia en una variable global
+void GBEm::OpenDialog(HWND hwnd) {
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+	OPENFILENAME ofn;
+	TCHAR szFile[MAX_PATH];
 
-   if (!hWnd)
-   {
-      return FALSE;
-   }
+	ZeroMemory(&ofn, sizeof(ofn));
+	ofn.lStructSize = sizeof(ofn);
+	ofn.lpstrFile = szFile;
+	ofn.lpstrFile[0] = '\0';
+	ofn.hwndOwner = hwnd;
+	ofn.nMaxFile = sizeof(szFile);
+	ofn.lpstrFilter = TEXT("All files(*.*)\0*.*\0");
+	ofn.nFilterIndex = 1;
 
-   ShowWindow(hWnd, nCmdShow);
-   UpdateWindow(hWnd);
+	if (GetOpenFileName(&ofn))
+		ofn.lpstrInitialDir = NULL;
+	ofn.lpstrFileTitle = NULL;
+	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+	{
 
-   return TRUE;
+	}
+
 }
 
-//
-//  FUNCIÓN: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  PROPÓSITO: Procesa mensajes de la ventana principal.
-//
-//  WM_COMMAND  - procesar el menú de aplicaciones
-//  WM_PAINT    - Pintar la ventana principal
-//  WM_DESTROY  - publicar un mensaje de salida y volver
-//
-//
-LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    switch (message)
-    {
-    case WM_COMMAND:
-        {
-            int wmId = LOWORD(wParam);
-            // Analizar las selecciones de menú:
-            switch (wmId)
-            {
-            case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
-            case IDM_EXIT:
-                DestroyWindow(hWnd);
-                break;
-            default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
-            }
-        }
-        break;
-    case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Agregar cualquier código de dibujo que use hDC aquí...
-            EndPaint(hWnd, &ps);
-        }
-        break;
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        break;
-    default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
-    }
-    return 0;
+int GBEm::initGBEm() {
+
+	double fps = 59.73;
+	double DesiredDelta = 1000 / fps;
+
+
+	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+		printf("Error: SDL failed to initialize\nSDL Error: '%s'\n", SDL_GetError());
+		return 1;
+	}
+
+	if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+		printf("SDL failed to initialize : %s\n", SDL_GetError());
+
+	}
+
+	SDL_Window* window = SDL_CreateWindow("GBEm", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+		WindowWidth, WindowHeight, SDL_WINDOW_RESIZABLE);
+
+
+	if (!window) {
+		printf("Error: Failed to open window\nSDL Error: '%s'\n", SDL_GetError());
+		return 1;
+	}
+
+	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+	if (!renderer) {
+		printf("Error: Failed to create renderer\nSDL Error: '%s'\n", SDL_GetError());
+		return 1;
+	}
+
+	SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB24,
+		SDL_TEXTUREACCESS_STREAMING, 160, 144);
+
+
+	HWND WindowHandler = getSDLWinHandle(window);
+
+	CreateMenuBar(WindowHandler);
+
+	SDL_EventState(SDL_SYSWMEVENT, SDL_ENABLE);
+	bool running = true;
+
+	while (running) {
+
+		int startLoop = SDL_GetTicks();
+
+		SDL_Event event;
+		while (SDL_PollEvent(&event)) {
+
+			switch (event.type) {
+
+			case SDL_SYSWMEVENT:
+
+				switch (WM_MESSAGE(event).msg) {
+
+				case WM_COMMAND:
+
+					switch (LOWORD(WM_MESSAGE(event).wParam))
+					{
+
+					case IDM_FILE_OPEN:
+
+						MessageBeep(MB_ICONINFORMATION);
+						OpenDialog(WindowHandler);
+						break;
+
+					case IDM_FILE_QUIT:
+						SendMessage(WindowHandler, WM_CLOSE, 0, 0);
+						break;
+
+					}
+
+					break;
+
+				case WM_KEYDOWN:
+
+					switch (LOWORD(WM_MESSAGE(event).wParam))
+					{
+					case VK_LEFT:
+
+						break;
+
+					case VK_RIGHT:
+
+						break;
+
+					case VK_UP:
+
+						break;
+
+					case VK_DOWN:
+
+						break;
+
+					case VK_RETURN:
+
+						break;
+
+					case VK_SHIFT:
+
+						break;
+
+					case VK_BACK:
+
+						break;
+
+					case 0x5A:
+
+						break;
+
+					case 0x58:
+
+						break;
+					}
+
+					break;
+
+				case WM_KEYUP:
+
+					switch (LOWORD(WM_MESSAGE(event).wParam))
+					{
+					case VK_LEFT:
+
+						break;
+
+					case VK_RIGHT:
+
+						break;
+
+					case VK_UP:
+
+						break;
+
+					case VK_DOWN:
+
+						break;
+
+					case VK_RETURN:
+
+						break;
+
+					case VK_SHIFT:
+
+						break;
+
+					case VK_BACK:
+
+						break;
+
+					case 0x5A:
+
+						break;
+
+					case 0x58:
+
+						break;
+
+					case VK_OEM_PLUS:
+
+						break;
+
+					case VK_OEM_MINUS:
+
+						break;
+
+					}
+
+					break;
+				}
+
+				break;
+
+			case SDL_WINDOWEVENT:
+
+				if (!(event.window.event == SDL_WINDOWEVENT_CLOSE)) break;
+
+			case SDL_QUIT:
+
+				SDL_DestroyRenderer(renderer);
+
+				SDL_DestroyTexture(texture);
+				SDL_DestroyWindow(window);
+
+				running = false;
+				break;
+
+			default:
+				break;
+			}
+
+		}
+
+		int delta = SDL_GetTicks() - startLoop;
+		DesiredDelta = 1000 / fps;
+
+	}
+
+	return 0;
+
 }
 
-// Controlador de mensajes del cuadro Acerca de.
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    UNREFERENCED_PARAMETER(lParam);
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        return (INT_PTR)TRUE;
+int main(int argc, char* argv[]) {
 
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
-            return (INT_PTR)TRUE;
-        }
-        break;
-    }
-    return (INT_PTR)FALSE;
+	GBEm gbEm;
+
+	return gbEm.initGBEm();
+
 }
